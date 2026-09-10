@@ -406,7 +406,7 @@ export default function POSPage() {
         <POSQRScannerModal
           isOpen={showQRScanner}
           onClose={() => setShowQRScanner(false)}
-          onStudentFound={(s) => setStudent(s)}
+          onStudentFound={(s) => setStudent({ ...s, method: 'card' })}
         />
       )}
       <StudentSelectionModal

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, CreditCard, QrCode, Printer, Ban, Unlock, Trash2, Plus, X, Download } from 'lucide-react';
 import { cardsApi, studentsApi } from '../../services/api';
 import { QRCodeSVG } from '../../components/common/QRCodeSVG';
@@ -42,7 +42,6 @@ export default function CardsPage() {
   const [cardType, setCardType] = useState<'qrcode' | 'nfc'>('qrcode');
   const [issuing, setIssuing] = useState(false);
   const [previewQR, setPreviewQR] = useState<string | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
@@ -157,9 +156,6 @@ export default function CardsPage() {
       showToast('Permita pop-ups para imprimir', 'error');
       return;
     }
-
-    const qrValue = `STUDENT:${card.student_id}`;
-    const svgEl = document.querySelector(`[data-qr-id="${card.id}"]`);
 
     printWindow.document.write(`
       <!DOCTYPE html>

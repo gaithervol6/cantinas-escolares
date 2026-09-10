@@ -5,9 +5,10 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const usePostgres = process.env.DB_CLIENT === 'pg' || !!process.env.DATABASE_URL;
+const isProd = process.env.NODE_ENV === 'production';
 
 const migrationsDir = usePostgres
-  ? path.resolve(__dirname, './src/shared/database/migrations')
+  ? path.resolve(__dirname, isProd ? './dist/shared/database/migrations' : './src/shared/database/migrations')
   : path.resolve(__dirname, './src/shared/database/migrations-sqlite');
 
 const config = usePostgres
@@ -17,12 +18,12 @@ const config = usePostgres
       pool: { min: 2, max: 10 },
       migrations: {
         directory: migrationsDir,
-        extension: 'ts',
+        extension: isProd ? 'js' : 'ts',
         tableName: 'knex_migrations',
       },
       seeds: {
-        directory: path.resolve(__dirname, './src/shared/database/seeds'),
-        extension: 'ts',
+        directory: path.resolve(__dirname, isProd ? './dist/shared/database/seeds' : './src/shared/database/seeds'),
+        extension: isProd ? 'js' : 'ts',
       },
     }
   : {

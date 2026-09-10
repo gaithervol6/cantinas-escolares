@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const listCardsSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   studentId: z.string().uuid().optional(),
   isActive: z.coerce.boolean().optional(),
   isBlocked: z.coerce.boolean().optional(),

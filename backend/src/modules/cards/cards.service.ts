@@ -83,6 +83,26 @@ export class CardsService {
    * Get student info by card code.
    */
   async getStudentByCardCode(code: string): Promise<Record<string, any>> {
+    // Handle QR Code format: STUDENT:{uuid}
+    if (code.toUpperCase().startsWith('STUDENT:')) {
+      const studentId = code.substring(8).trim();
+      const result = await db('students as s')
+        .join('users as u', 's.user_id', 'u.id')
+        .where({ 's.id': studentId, 's.is_active': true })
+        .select(
+          's.id as student_id', 'u.name', 'u.email',
+          's.enrollment_number', 's.grade', 's.balance',
+          's.photo_url'
+        )
+        .first();
+
+      if (!result) {
+        throw Errors.notFound('Aluno');
+      }
+
+      return { ...result, is_blocked: false, blocked_reason: null };
+    }
+
     const result = await db('cards as c')
       .join('students as s', 'c.student_id', 's.id')
       .join('users as u', 's.user_id', 'u.id')

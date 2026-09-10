@@ -9,6 +9,7 @@ import CartPanel from '../../components/pos/CartPanel';
 import PaymentModal from '../../components/pos/PaymentModal';
 import CashRegisterModal from '../../components/pos/CashRegisterModal';
 import FacialLoginModal from '../../components/pos/FacialLoginModal';
+import { POSQRScannerModal } from '../../components/pos/POSQRScannerModal';
 import { StudentSearchAutocomplete } from '../../components/pos/StudentSearchAutocomplete';
 import { StudentSelectionModal, type StudentResult } from '../../components/pos/StudentSelectionModal';
 import './POSPage.css';
@@ -50,6 +51,7 @@ export default function POSPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [showCashRegister, setShowCashRegister] = useState(false);
   const [showFacialLogin, setShowFacialLogin] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -218,6 +220,7 @@ export default function POSPage() {
           <StudentSearchAutocomplete
             onSelectStudent={(s) => setStudent(s)}
             onOpenFacialLogin={() => setShowFacialLogin(true)}
+            onOpenQRScanner={() => setShowQRScanner(true)}
             onMultipleResultsFound={handleMultipleResults}
           />
 
@@ -398,6 +401,13 @@ export default function POSPage() {
       )}
       {showFacialLogin && (
         <FacialLoginModal onClose={() => setShowFacialLogin(false)} isOpen={showFacialLogin} />
+      )}
+      {showQRScanner && (
+        <POSQRScannerModal
+          isOpen={showQRScanner}
+          onClose={() => setShowQRScanner(false)}
+          onStudentFound={(s) => setStudent(s)}
+        />
       )}
       <StudentSelectionModal
         isOpen={showSelectionModal}

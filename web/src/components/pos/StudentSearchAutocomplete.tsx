@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreditCard, Camera, Loader2, User as UserIcon } from 'lucide-react';
+import { CreditCard, Camera, QrCode, Loader2, User as UserIcon } from 'lucide-react';
 import { studentsApi, cardsApi } from '../../services/api';
 import { type StudentResult } from './StudentSelectionModal';
 import './StudentSearchAutocomplete.css';
@@ -7,12 +7,14 @@ import './StudentSearchAutocomplete.css';
 interface StudentSearchAutocompleteProps {
   onSelectStudent: (student: any) => void;
   onOpenFacialLogin: () => void;
+  onOpenQRScanner: () => void;
   onMultipleResultsFound: (students: StudentResult[], searchTerm: string) => void;
 }
 
 export const StudentSearchAutocomplete: React.FC<StudentSearchAutocompleteProps> = ({
   onSelectStudent,
   onOpenFacialLogin,
+  onOpenQRScanner,
   onMultipleResultsFound,
 }) => {
   const [query, setQuery] = useState('');
@@ -155,6 +157,15 @@ export const StudentSearchAutocomplete: React.FC<StudentSearchAutocompleteProps>
         />
 
         {loading && <Loader2 size={16} className="animate-spin text-muted" />}
+
+        <button
+          type="button"
+          className="btn btn-ghost btn-icon qr-scan-btn"
+          title="Escanear QR Code"
+          onClick={onOpenQRScanner}
+        >
+          <QrCode size={16} />
+        </button>
 
         {/* Botão de Reconhecimento Facial — Mantido Intacto */}
         <button

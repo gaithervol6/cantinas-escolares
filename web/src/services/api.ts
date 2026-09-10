@@ -156,6 +156,16 @@ export const menuApi = {
 export const cardsApi = {
   getStudentByCard: (code: string) =>
     api.get(`/cards/${code}/student`),
+  list: (params?: any) =>
+    api.get('/cards', { params }),
+  issue: (data: { studentId: string; cardNumber: string; cardType: string }) =>
+    api.post('/cards', data),
+  block: (id: string, data: { reason: string }) =>
+    api.post(`/cards/${id}/block`, data),
+  unblock: (id: string) =>
+    api.post(`/cards/${id}/unblock`),
+  deactivate: (id: string) =>
+    api.delete(`/cards/${id}`),
 };
 
 // ---- Students ----

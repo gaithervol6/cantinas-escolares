@@ -13,6 +13,7 @@ import GuardiansPage from './pages/admin/GuardiansPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import OnCreditPage from './pages/admin/OnCreditPage';
 import FiadoScannerPage from './pages/admin/FiadoScannerPage';
+import CardsPage from './pages/admin/CardsPage';
 import ToastContainer from './components/common/Toast';
 import { keepAliveService } from './services/keepAlive';
 
@@ -95,7 +96,7 @@ export default function App() {
             <Route path="products" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><ProductsPage /></ProtectedRoute>} />
             <Route path="students" element={<StudentsPage />} />
             <Route path="guardians" element={<GuardiansPage />} />
-            <Route path="cards" element={<PlaceholderPage title="Cartões" />} />
+            <Route path="cards" element={<ProtectedRoute allowedRoles={['admin']}><CardsPage /></ProtectedRoute>} />
             <Route path="sales" element={<ProtectedRoute allowedRoles={['admin', 'manager']}><SalesPage /></ProtectedRoute>} />
             <Route path="on-credit" element={<OnCreditPage />} />
             <Route path="fiado-scanner" element={<FiadoScannerPage />} />

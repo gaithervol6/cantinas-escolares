@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, CreditCard, QrCode, Printer, Ban, Unlock, Trash2, Plus, X, Download } from 'lucide-react';
-import { cardsApi, studentsApi } from '../../services/api';
+import { Search, CreditCard, QrCode, Printer, Ban, Unlock, Trash2, Plus, X, Download, Settings, Upload } from 'lucide-react';
+import { cardsApi, studentsApi, cardTemplatesApi } from '../../services/api';
 import { QRCodeSVG } from '../../components/common/QRCodeSVG';
 import { showToast } from '../../components/common/Toast';
 import './CardsPage.css';
@@ -28,6 +28,30 @@ interface Student {
   hasCard?: boolean;
 }
 
+interface CardTemplate {
+  id?: string;
+  background_image?: string;
+  title: string;
+  subtitle: string;
+  primary_color: string;
+  secondary_color: string;
+  show_name: boolean;
+  show_enrollment: boolean;
+  show_grade: boolean;
+  qr_size: number;
+}
+
+const DEFAULT_TEMPLATE: CardTemplate = {
+  title: 'Cantina Escolar',
+  subtitle: 'Cartão do Aluno',
+  primary_color: '#059669',
+  secondary_color: '#10b981',
+  show_name: true,
+  show_enrollment: true,
+  show_grade: false,
+  qr_size: 160,
+};
+
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -43,6 +67,12 @@ export default function CardsPage() {
   const [issuing, setIssuing] = useState(false);
   const [previewQR, setPreviewQR] = useState<string | null>(null);
 
+  // Template state
+  const [template, setTemplate] = useState<CardTemplate>(DEFAULT_TEMPLATE);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateBgUploading, setTemplateBgUploading] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -50,12 +80,18 @@ export default function CardsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [cardsRes, studentsRes] = await Promise.all([
+      const [cardsRes, studentsRes, templateRes] = await Promise.all([
         cardsApi.list({ limit: 200 }),
         studentsApi.list({ limit: 500, isActive: true }),
+        cardTemplatesApi.get().catch(() => ({ data: { data: null } })),
       ]);
       const cardsData = cardsRes.data?.data?.data || [];
       const studentsData = studentsRes.data?.data?.data || [];
+      const templateData = templateRes.data?.data;
+
+      if (templateData) {
+        setTemplate({ ...DEFAULT_TEMPLATE, ...templateData });
+      }
 
       const studentsWithCards = studentsData.map((s: any) => ({
         ...s,
@@ -150,51 +186,106 @@ export default function CardsPage() {
     }
   };
 
+  const handleSaveTemplate = async () => {
+    setTemplateSaving(true);
+    try {
+      const payload: any = {};
+      if (template.title) payload.title = template.title;
+      if (template.subtitle) payload.subtitle = template.subtitle;
+      payload.primaryColor = template.primary_color;
+      payload.secondaryColor = template.secondary_color;
+      payload.showName = template.show_name;
+      payload.showEnrollment = template.show_enrollment;
+      payload.showGrade = template.show_grade;
+      payload.qrSize = template.qr_size;
+      await cardTemplatesApi.upsert(payload);
+      showToast('Modelo do cartão salvo!', 'success');
+      setShowTemplateModal(false);
+    } catch (err: any) {
+      showToast(err.response?.data?.error?.message || 'Erro ao salvar modelo', 'error');
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const handleUploadBackground = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setTemplateBgUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await cardTemplatesApi.uploadBackground(formData);
+      setTemplate({ ...template, background_image: data.data.background_image });
+      showToast('Imagem de fundo enviada!', 'success');
+    } catch (err: any) {
+      showToast(err.response?.data?.error?.message || 'Erro ao enviar imagem', 'error');
+    } finally {
+      setTemplateBgUploading(false);
+    }
+  };
+
+  const handleDeleteBackground = async () => {
+    try {
+      await cardTemplatesApi.upsert({ backgroundImage: '' });
+      setTemplate({ ...template, background_image: undefined });
+      showToast('Imagem de fundo removida', 'success');
+    } catch (err: any) {
+      showToast('Erro ao remover imagem', 'error');
+    }
+  };
+
+  const buildCardHTML = (studentName: string, enrollment: string, grade: string, qrSvg: string) => {
+    const t = template;
+    const hasBg = !!t.background_image;
+
+    const cardStyle = hasBg
+      ? `background: url(${t.background_image}) center/cover no-repeat; border-radius: 16px; width: 340px; min-height: 210px; position: relative; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);`
+      : `background: linear-gradient(135deg, ${t.primary_color}, ${t.secondary_color}); border-radius: 16px; width: 340px; padding: 24px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1);`;
+
+    const textColor = hasBg ? '#fff' : '#fff';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head><title>Cartão - ${studentName}</title>
+      <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f0f0f0; }
+        .card { ${cardStyle} }
+        .card-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+        .card-header { font-size: 20px; font-weight: 800; color: ${textColor}; text-shadow: 0 1px 3px rgba(0,0,0,0.3); margin-bottom: 4px; }
+        .card-subtitle { font-size: 12px; color: rgba(255,255,255,0.9); margin-bottom: 16px; }
+        .card-qr { margin: 8px 0; background: white; padding: 8px; border-radius: 8px; display: inline-block; }
+        .card-name { font-size: 15px; font-weight: 700; color: ${textColor}; margin-top: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .card-info { font-size: 11px; color: rgba(255,255,255,0.9); margin-top: 4px; }
+      </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="card-overlay">
+            <div class="card-header">${t.title}</div>
+            <div class="card-subtitle">${t.subtitle}</div>
+            <div class="card-qr">${qrSvg}</div>
+            ${t.show_name ? `<div class="card-name">${studentName}</div>` : ''}
+            ${t.show_enrollment ? `<div class="card-info">Mat: ${enrollment}</div>` : ''}
+            ${t.show_grade && grade ? `<div class="card-info">${grade}</div>` : ''}
+          </div>
+        </div>
+        <script>window.onload=function(){setTimeout(()=>{window.print();window.close();},500);};</script>
+      </body>
+      </html>
+    `;
+  };
+
   const handlePrintCard = (card: Card) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       showToast('Permita pop-ups para imprimir', 'error');
       return;
     }
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Cartão - ${card.student_name}</title>
-        <style>
-          body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f0f0f0; }
-          .card { background: white; border-radius: 16px; padding: 32px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 320px; }
-          .card-header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
-          .card-header h2 { margin: 0; font-size: 18px; }
-          .card-header p { margin: 4px 0 0; font-size: 12px; opacity: 0.9; }
-          .qr-container { margin: 16px 0; }
-          .student-name { font-size: 16px; font-weight: 700; margin: 8px 0 4px; }
-          .student-info { font-size: 12px; color: #666; }
-          .card-code { font-size: 11px; color: #999; margin-top: 12px; font-family: monospace; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="card-header">
-            <h2>Cantina Escolar</h2>
-            <p>Cartão do Aluno</p>
-          </div>
-          <div class="qr-container" id="qr-target"></div>
-          <div class="student-name">${card.student_name}</div>
-          <div class="student-info">${card.enrollment_number || ''}</div>
-          <div class="card-code">${card.card_number}</div>
-        </div>
-        <script>
-          window.onload = function() {
-            const svg = document.querySelector('[data-qr-print]');
-            if (svg) document.getElementById('qr-target').appendChild(svg.cloneNode(true));
-            setTimeout(() => { window.print(); window.close(); }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `);
+    const svgEl = document.querySelector(`[data-qr-id="${card.id}"] svg`);
+    const qrSvg = svgEl ? svgEl.outerHTML : '';
+    printWindow.document.write(buildCardHTML(card.student_name, card.enrollment_number || '', '', qrSvg));
     printWindow.document.close();
   };
 
@@ -205,51 +296,47 @@ export default function CardsPage() {
       return;
     }
 
+    const t = template;
+    const hasBg = !!t.background_image;
     const qrSvgs: { [key: string]: string } = {};
     activeCards.forEach(card => {
       const el = document.querySelector(`[data-qr-id="${card.id}"] svg`);
       if (el) qrSvgs[card.id] = el.outerHTML;
     });
 
+    const cardsHTML = activeCards.map(card => {
+      const cardStyle = hasBg
+        ? `background: url(${t.background_image}) center/cover no-repeat; border-radius: 16px; min-height: 200px; position: relative; overflow: hidden; page-break-inside: avoid;`
+        : `background: linear-gradient(135deg, ${t.primary_color}, ${t.secondary_color}); border-radius: 16px; padding: 24px; text-align: center; page-break-inside: avoid;`;
+
+      return `
+        <div style="${cardStyle}">
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+            <div style="font-size:18px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.3);">${t.title}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.9);margin-bottom:12px;">${t.subtitle}</div>
+            <div style="background:white;padding:6px;border-radius:8px;display:inline-block;">${qrSvgs[card.id] || ''}</div>
+            ${t.show_name ? `<div style="font-size:14px;font-weight:700;color:#fff;margin-top:10px;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${card.student_name}</div>` : ''}
+            ${t.show_enrollment ? `<div style="font-size:10px;color:rgba(255,255,255,0.9);margin-top:3px;">Mat: ${card.enrollment_number || ''}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
-    const cardsHTML = activeCards.map(card => `
-      <div class="card">
-        <div class="card-header">
-          <h2>Cantina Escolar</h2>
-          <p>Cartão do Aluno</p>
-        </div>
-        <div class="qr-container">${qrSvgs[card.id] || ''}</div>
-        <div class="student-name">${card.student_name}</div>
-        <div class="student-info">${card.enrollment_number || ''}</div>
-        <div class="card-code">${card.card_number}</div>
-      </div>
-    `).join('');
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
-      <head>
-        <title>Cartões - Cantina Escolar</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background: white; }
-          .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-          .card { border: 2px solid #e5e7eb; border-radius: 16px; padding: 24px; text-align: center; page-break-inside: avoid; }
-          .card-header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 12px; border-radius: 10px; margin-bottom: 12px; }
-          .card-header h2 { margin: 0; font-size: 16px; }
-          .card-header p { margin: 2px 0 0; font-size: 11px; opacity: 0.9; }
-          .qr-container { margin: 12px 0; }
-          .qr-container svg { width: 140px; height: 140px; }
-          .student-name { font-size: 14px; font-weight: 700; margin: 6px 0 2px; }
-          .student-info { font-size: 11px; color: #666; }
-          .card-code { font-size: 10px; color: #999; margin-top: 8px; font-family: monospace; }
-          @media print { .grid { gap: 8px; } }
-        </style>
+      <head><title>Cartões - Cantina</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 16px; background: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+      </style>
       </head>
       <body>
         <div class="grid">${cardsHTML}</div>
-        <script>window.onload = function() { setTimeout(() => { window.print(); }, 300); };</script>
+        <script>window.onload=function(){setTimeout(()=>{window.print();},300);};</script>
       </body>
       </html>
     `);
@@ -304,6 +391,9 @@ export default function CardsPage() {
           </p>
         </div>
         <div className="cards-header-actions">
+          <button className="btn btn-secondary" onClick={() => setShowTemplateModal(true)}>
+            <Settings size={16} /> Arte do Cartão
+          </button>
           <button className="btn btn-secondary" onClick={handleExportCSV}>
             <Download size={16} /> CSV
           </button>
@@ -524,6 +614,187 @@ export default function CardsPage() {
             </div>
             <div className="modal-body" style={{ display: 'flex', justifyContent: 'center' }}>
               <QRCodeSVG value={previewQR} size={250} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Settings Modal */}
+      {showTemplateModal && (
+        <div className="modal-overlay" onClick={() => setShowTemplateModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px', width: '95%' }}>
+            <div className="modal-header">
+              <h3><Settings size={20} /> Arte do Cartão</h3>
+              <button className="btn btn-ghost" onClick={() => setShowTemplateModal(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              {/* Background Image Upload */}
+              <div className="form-group">
+                <label>Imagem de Fundo</label>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                  Envie uma imagem que será o fundo do cartão. O QR Code e os dados do aluno ficam sobrepostos.
+                </p>
+                {template.background_image ? (
+                  <div style={{ position: 'relative', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                    <img src={template.background_image} alt="Fundo do cartão" style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+                    <button
+                      className="btn btn-ghost"
+                      style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.5)', color: 'white', padding: '4px 8px', fontSize: '0.75rem' }}
+                      onClick={handleDeleteBackground}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '10px',
+                    cursor: 'pointer', color: 'var(--text-muted)', gap: '8px', transition: 'border-color 0.2s',
+                  }}>
+                    <Upload size={24} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      {templateBgUploading ? 'Enviando...' : 'Clique para enviar imagem'}
+                    </span>
+                    <span style={{ fontSize: '0.72rem' }}>PNG, JPG ou WebP (máx. 5MB)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleUploadBackground}
+                      disabled={templateBgUploading}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Title & Subtitle */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-group">
+                  <label>Título</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={template.title}
+                    onChange={(e) => setTemplate({ ...template, title: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Subtítulo</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={template.subtitle}
+                    onChange={(e) => setTemplate({ ...template, subtitle: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-group">
+                  <label>Cor Principal</label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={template.primary_color}
+                      onChange={(e) => setTemplate({ ...template, primary_color: e.target.value })}
+                      style={{ width: '40px', height: '36px', padding: '2px', cursor: 'pointer' }}
+                    />
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={template.primary_color}
+                      onChange={(e) => setTemplate({ ...template, primary_color: e.target.value })}
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Cor Secundária</label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={template.secondary_color}
+                      onChange={(e) => setTemplate({ ...template, secondary_color: e.target.value })}
+                      style={{ width: '40px', height: '36px', padding: '2px', cursor: 'pointer' }}
+                    />
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={template.secondary_color}
+                      onChange={(e) => setTemplate({ ...template, secondary_color: e.target.value })}
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* QR Size */}
+              <div className="form-group">
+                <label>Tamanho do QR Code: {template.qr_size}px</label>
+                <input
+                  type="range"
+                  min={80}
+                  max={300}
+                  value={template.qr_size}
+                  onChange={(e) => setTemplate({ ...template, qr_size: Number(e.target.value) })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* Checkboxes */}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={template.show_name}
+                    onChange={(e) => setTemplate({ ...template, show_name: e.target.checked })}
+                  />
+                  Mostrar Nome
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={template.show_enrollment}
+                    onChange={(e) => setTemplate({ ...template, show_enrollment: e.target.checked })}
+                  />
+                  Mostrar Matrícula
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={template.show_grade}
+                    onChange={(e) => setTemplate({ ...template, show_grade: e.target.checked })}
+                  />
+                  Mostrar Série
+                </label>
+              </div>
+
+              {/* Preview */}
+              <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'var(--bg-hover, #f1f5f9)', borderRadius: '10px' }}>
+                <p style={{ fontSize: '0.78rem', fontWeight: 700, margin: '0 0 8px', color: 'var(--text-muted)' }}>PRÉ-VISUALIZAÇÃO</p>
+                <div style={{
+                  background: template.background_image
+                    ? `url(${template.background_image}) center/cover no-repeat`
+                    : `linear-gradient(135deg, ${template.primary_color}, ${template.secondary_color})`,
+                  borderRadius: '12px', padding: '16px', textAlign: 'center', width: '240px', margin: '0 auto',
+                  minHeight: '150px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ color: '#fff', fontWeight: 800, fontSize: '14px', textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{template.title}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '10px', marginBottom: '8px' }}>{template.subtitle}</div>
+                  <div style={{ background: 'white', padding: '4px', borderRadius: '6px', display: 'inline-block' }}>
+                    <QRCodeSVG value="STUDENT:preview" size={template.qr_size * 0.5} />
+                  </div>
+                  {template.show_name && <div style={{ color: '#fff', fontWeight: 700, fontSize: '11px', marginTop: '8px' }}>Nome do Aluno</div>}
+                  {template.show_enrollment && <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '9px' }}>Mat: 000000</div>}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowTemplateModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSaveTemplate} disabled={templateSaving}>
+                {templateSaving ? 'Salvando...' : 'Salvar Modelo'}
+              </button>
             </div>
           </div>
         </div>

@@ -168,6 +168,20 @@ export const cardsApi = {
     api.delete(`/cards/${id}`),
 };
 
+// ---- Card Templates ----
+export const cardTemplatesApi = {
+  get: () =>
+    api.get('/card-templates'),
+  upsert: (data: any) =>
+    api.put('/card-templates', data),
+  uploadBackground: (formData: FormData) =>
+    api.post('/card-templates/background', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  delete: () =>
+    api.delete('/card-templates'),
+};
+
 // ---- Students ----
 export const studentsApi = {
   create: (data: any) =>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Search, Users as UsersIcon, CreditCard, Wallet, Plus, X, Save, Edit2, Trash2, ScanFace, Clock, ShieldCheck } from 'lucide-react';
+import { Search, Users as UsersIcon, CreditCard, Wallet, Plus, X, Save, Edit2, Trash2, ScanFace, Clock, ShieldCheck, QrCode, Printer } from 'lucide-react';
 import axios from 'axios';
 import { api, dailyLimitsApi } from '../../services/api';
 import { FacialCaptureModal } from '../../components/FacialCaptureModal';
+import { QRCodeSVG } from '../../components/common/QRCodeSVG';
 import './StudentsPage.css';
 
 interface Student {
@@ -36,6 +37,9 @@ export default function StudentsPage() {
   // Facial Capture State
   const [isFacialModalOpen, setIsFacialModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // Card QR Modal State
+  const [cardModalStudent, setCardModalStudent] = useState<Student | null>(null);
 
   // Balance State
   const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
@@ -577,7 +581,7 @@ export default function StudentsPage() {
                 >
                   <Clock size={16} />
                 </button>
-                <button className="btn btn-outline" onClick={() => { /* cards modal */ }} title="Cartões">
+                <button className="btn btn-outline" onClick={() => setCardModalStudent(s)} title="Cartões">
                   <CreditCard size={16} /> Cartões
                 </button>
                 <button className="btn btn-outline" onClick={() => openBalanceModal(s)} title="Pôr Saldo">
@@ -1065,6 +1069,44 @@ export default function StudentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Card QR Code Modal */}
+      {cardModalStudent && (
+        <div className="modal-overlay" onClick={() => setCardModalStudent(null)}>
+          <div className="modal-content animate-zoomIn" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <QrCode size={20} /> Cartão do Aluno
+              </h2>
+              <button type="button" className="btn-close" onClick={() => setCardModalStudent(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '1.5rem' }}>
+              <QRCodeSVG value={`STUDENT:${cardModalStudent.id}`} size={200} />
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: '1.1rem' }}>{cardModalStudent.name}</h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>Mat: {cardModalStudent.enrollment_number}</p>
+                <p style={{ margin: '2px 0 0', color: '#94a3b8', fontSize: '0.78rem', fontFamily: 'monospace' }}>ID: {cardModalStudent.id}</p>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: 0 }}>
+                Escaneie este QR Code no PDV para identificar o aluno
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => {
+                const win = window.open('', '_blank');
+                if (!win) return;
+                const svgEl = document.querySelector(`[data-card-qr="${cardModalStudent.id}"] svg`);
+                const svg = svgEl ? svgEl.outerHTML : '';
+                win.document.write(`<!DOCTYPE html><html><head><title>Cartão - ${cardModalStudent.name}</title><style>body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0;}.card{background:white;border-radius:16px;padding:32px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);width:320px;}.header{background:linear-gradient(135deg,#059669,#10b981);color:white;padding:16px;border-radius:12px;margin-bottom:16px;}.header h2{margin:0;font-size:18px;}.header p{margin:4px 0 0;font-size:12px;opacity:0.9;}.name{font-size:16px;font-weight:700;margin:8px 0 4px;}.info{font-size:12px;color:#666;}.code{font-size:11px;color:#999;margin-top:12px;font-family:monospace;}</style></head><body><div class="card"><div class="header"><h2>Cantina Escolar</h2><p>Cartão do Aluno</p></div>${svg}<div class="name">${cardModalStudent.name}</div><div class="info">Mat: ${cardModalStudent.enrollment_number}</div></div><script>window.onload=function(){setTimeout(()=>{window.print();},500);};</script></body></html>`);
+                win.document.close();
+              }}>
+                <Printer size={16} /> Imprimir
+              </button>
+              <button className="btn btn-primary" onClick={() => setCardModalStudent(null)}>Fechar</button>
+            </div>
           </div>
         </div>
       )}

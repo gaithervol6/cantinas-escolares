@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Package, Users, ShoppingBag,
   BarChart3, Settings, LogOut, Coffee,
-  ChevronLeft, ChevronRight, Menu, X, UserCheck, Clock, QrCode, CreditCard
+  ChevronLeft, ChevronRight, Menu, X, UserCheck, Clock, QrCode, CreditCard, ShoppingCart
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
@@ -115,6 +115,13 @@ export default function AdminLayout() {
           >
             <X size={20} />
           </button>
+        </div>
+
+        <div className="sidebar-pdv-box">
+          <NavLink to="/pos" className="sidebar-pdv-btn-highlight" onClick={handleNavClick}>
+            <ShoppingCart size={20} />
+            {(!collapsed || mobileOpen) && <span>Abrir PDV</span>}
+          </NavLink>
         </div>
 
         <nav className="sidebar-nav">

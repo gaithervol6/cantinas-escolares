@@ -1,6 +1,19 @@
 # 🏫 Sistema Cantina Escolar
 
+[![Vercel Deploy](https://vercel.com/button)](https://cantinas-escolares-web.vercel.app)
+![Frontend](https://img.shields.io/badge/Frontend-Vercel-black?style=flat-square&logo=vercel)
+![Backend](https://img.shields.io/badge/Backend-Render-brightgreen?style=flat-square&logo=render)
+![API Status](https://img.shields.io/badge/API-400-red?style=flat-square&logo=node.js&label=health)
+
 Sistema completo de gestão de cantina escolar com PDV touchscreen, reconhecimento facial, app mobile, portal dos pais, controle financeiro e gestão de estoque.
+
+## 🌐 Acesso
+
+| Ambiente | URL |
+|----------|-----|
+| **Frontend (Vercel)** | [cantinas-escolares-web.vercel.app](https://cantinas-escolares-web.vercel.app) |
+| **Backend API (Render)** | [cantinas-api.onrender.com](https://cantinas-api.onrender.com) |
+| **Health Check** | [cantinas-api.onrender.com/api/health](https://cantinas-api.onrender.com/api/health) |
 
 ## 📋 Requisitos
 

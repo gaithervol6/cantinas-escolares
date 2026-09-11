@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Package, Users, ShoppingBag,
   BarChart3, Settings, LogOut, Coffee,
-  ChevronLeft, ChevronRight, Menu, X, UserCheck, Clock, QrCode
+  ChevronLeft, ChevronRight, Menu, X, UserCheck, Clock, QrCode, CreditCard
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
@@ -14,6 +14,7 @@ const menuItems = [
   { path: '/admin/on-credit', icon: Clock, label: 'A Prazo (Crediário)' },
   { path: '/admin/fiado-scanner', icon: QrCode, label: 'Folha & Scanner QR' },
   { path: '/admin/students', icon: Users, label: 'Alunos / Clientes' },
+  { path: '/admin/cards', icon: CreditCard, label: 'Cartões' },
   { path: '/admin/guardians', icon: UserCheck, label: 'Responsáveis' },
   { path: '/admin/products', icon: Package, label: 'Produtos' },
   { path: '/admin/sales', icon: ShoppingBag, label: 'Vendas' },
@@ -75,7 +76,7 @@ export default function AdminLayout() {
       return ['/admin/on-credit', '/admin/fiado-scanner', '/admin/students', '/admin/guardians'].includes(item.path);
     }
     if (user.role === 'manager') {
-      return item.path !== '/admin/reports';
+      return !['/admin/reports', '/admin/cards'].includes(item.path);
     }
     return true;
   });
